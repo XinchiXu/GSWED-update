@@ -110,7 +110,7 @@ GSWED_Europe{目标年份}   GSWED_Oceania{目标年份}
 
 ### 第五步：运行后处理代码（post_processing）
 
-以下流程以**非洲（Africa）**为例，其余大洲重复相同操作即可：
+以下流程以 **Africa** 为例，其余大洲重复相同操作即可：
 
 1. 打开 `post_processing` 脚本，粘贴以下代码，并在编辑器弹出的提示中点击 **Convert**，将其转换为导入记录：
 
