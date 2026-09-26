@@ -1,0 +1,496 @@
+
+// MAKE GRID FOR "REGIONAL" SST (3 STEPS
+// 1) Create bounding box (here, centered just left of Hawaii)
+var lon_start =-76;
+var lon_end =  -56;
+var lat_start=-60;
+var lat_end = -35;
+// 2) Decide no. of (in this case: equally sized) cells
+var num_cells =20;
+var lon_edge = 5;
+var lat_edge = 5;
+// 3) Create the grid
+var polys = [];
+var polys_line = [];
+var cell_id = 0;
+for (var lat = lat_start; lat < lat_end; lat += lat_edge) {
+    var y1 = lat;
+    var y2 = lat + lat_edge;
+    for (var lon = lon_start; lon < lon_end; lon += lon_edge) {
+        cell_id = cell_id + 1;
+        var x1 = lon;
+        var x2 = lon + lon_edge;
+        polys.push(ee.Feature(ee.Geometry.Rectangle(x1, y1, x2, y2), { label: cell_id }));
+    }
+}
+var grid = ee.FeatureCollection(polys);
+var labelList =[0,1,4,5,6,8,9,10,
+12,13,14,16,17,18,19].map(function(la){
+  return la+1;
+});
+grid = grid.filter(ee.Filter.inList("label", labelList));
+var gridOutlines = ee.Image().toByte()
+                     .paint(grid, 0, 2);
+// Next, use this variable to display just the grid outlines
+Map.addLayer(gridOutlines, {palette: 'black',}, 'Grid');
+
+// Center map
+Map.centerObject(grid, 5);
+var addNDVI = function(image) {
+    var ndvi = image.normalizedDifference(['sur_refl_b02', 'sur_refl_b01']).unmask(99);
+    return image.addBands(ndvi);
+};
+
+var land = dem.gt(-500);
+// A function to mask out cloudy pixels.
+function rmCloud(image) {
+    var cloud0BitMask = (1 << 0);
+    var cloud1BitMask = (1 << 1);
+    var snowIceBitMask = (1 << 12);
+    var qa = image.select("State");
+    var mask = qa.bitwiseAnd(cloud0BitMask).eq(0)
+                 .and(qa.bitwiseAnd(cloud1BitMask).eq(0))
+    .and(qa.bitwiseAnd(snowIceBitMask).eq(0));
+    return image.updateMask(land.eq(1)).updateMask(mask);
+}
+var ndviCol = MOD09Q1Collection.filterDate("2022-1-1", "2023-1-1")
+                             .map(addNDVI)
+                             .select(['sur_refl_b01','sur_refl_b02','nd', 'State', 'QA']);
+var visParams = {
+    bands: ["sur_refl_b02", "sur_refl_b01", "sur_refl_b02"],
+    min: 10,
+    max: 8000
+};
+
+//对应筛选的格子，每一个格子与每一年中的每一期影像筛选是一一对应的
+var pLists = ee.List([
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+,
+[0.0172826,0.0172826,0.0230462,0.0230462,0.0228695,0.0228695,0.0236314,0.0236314,0.0234593,0.0234593, 0.022073, 0.022073, 0.020789, 0.020789, 0.019039, 0.019039, 0.014113, 0.014113, 0.009486, 0.009486, 0.004888, 0.004888, 0.007205, 0.007205, 0.006521, 0.006521, 0.011273, 0.011273, 0.009904, 0.009904, 0.013574, 0.013574, 0.015352, 0.015352, 0.016960, 0.016960, 0.017987, 0.017987, 0.019198, 0.019198, 0.012772, 0.012772, 0.017613, 0.017613, 0.018156, 0.018156]
+,
+[0.0176,0.0176,0.0224,0.0224,0.0148,0.0148,0.0126,0.0126,0.0126,0.0126, 0.023, 0.023, 0.020, 0.020, 0.017, 0.017, 0.008, 0.008, 0.010, 0.010, 0.006, 0.006, 0.007, 0.007, 0.007, 0.007, 0.014, 0.014, 0.015, 0.015, 0.007, 0.007, 0.018, 0.018, 0.018, 0.018, 0.022, 0.022, 0.013, 0.013, 0.017, 0.017, 0.013, 0.013, 0.016, 0.016]
+,
+[0.08819,0.08819,0.10138,0.10138,0.10840,0.10840,0.11548,0.11548,0.11375,0.11375, 0.1118, 0.1118, 0.1075, 0.1075, 0.1175, 0.1175, 0.0615, 0.0615, 0.0483, 0.0483, 0.0397, 0.0397, 0.0422, 0.0422, 0.0467, 0.0467, 0.0673, 0.0673, 0.0089, 0.0089, 0.0105, 0.0105, 0.0497, 0.0497, 0.0748, 0.0748, 0.1004, 0.1004, 0.1070, 0.1070, 0.0952, 0.0952, 0.0922, 0.0922, 0.1036, 0.1036]
+,
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+,
+[0.02094,0.02094,0.02282,0.02282,0.02180,0.02180,0.02219,0.02219,0.01781,0.01781, 0.0230, 0.0230, 0.0224, 0.0224, 0.0194, 0.0194, 0.0142, 0.0142, 0.0138, 0.0138, 0.0123, 0.0123, 0.0147, 0.0147, 0.0103, 0.0103, 0.0176, 0.0176, 0.0163, 0.0163, 0.0157, 0.0157, 0.0215, 0.0215, 0.0206, 0.0206, 0.0216, 0.0216, 0.0206, 0.0206, 0.0220, 0.0220, 0.0209, 0.0209, 0.0148, 0.0148]
+,
+[0.03042,0.03042,0.02095,0.02095,0.02182,0.02182,0.00694,0.00694,0.00706,0.00706, 0.0067, 0.0067, 0.0327, 0.0327, 0.0320, 0.0320, 0.0252, 0.0252, 0.0165, 0.0165, 0.0248, 0.0248, 0.0239, 0.0239, 0.0153, 0.0153, 0.0315, 0.0315, 0.0216, 0.0216, 0.0303, 0.0303, 0.0208, 0.0208, 0.0289, 0.0289, 0.0277, 0.0277, 0.0359, 0.0359, 0.0280, 0.0280, 0.0273, 0.0273, 0.0200, 0.0200]
+,
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+,
+[0.17823,0.17823,0.18193,0.18193,0.18640,0.18640,0.18692,0.18692,0.17989,0.17989, 0.1774, 0.1774, 0.1760, 0.1760, 0.1560, 0.1560, 0.1454, 0.1454, 0.1580, 0.1580, 0.1534, 0.1534, 0.1558, 0.1558, 0.1390, 0.1390, 0.1482, 0.1482, 0.1657, 0.1657, 0.1683, 0.1683, 0.1768, 0.1768, 0.1705, 0.1705, 0.1827, 0.1827, 0.1811, 0.1811, 0.1836, 0.1836, 0.1973, 0.1973, 0.1995, 0.1995]
+,
+[0.03514,0.03514,0.03480,0.03480,0.03510,0.03510,0.04263,0.04263,0.01668,0.01668, 0.0266, 0.0266, 0.0383, 0.0383, 0.0425, 0.0425, 0.0384, 0.0384, 0.0309, 0.0309, 0.0173, 0.0173, 0.0273, 0.0273, 0.0249, 0.0249, 0.0330, 0.0330, 0.0285, 0.0285, 0.0325, 0.0325, 0.0235, 0.0235, 0.0085, 0.0085, 0.0243, 0.0243, 0.0255, 0.0255, 0.0351, 0.0351, 0.0381, 0.0381, 0.0348, 0.0348]
+,
+[0.0069483,0.0069483,0.0074248,0.0074248,0.0065920,0.0065920,0.0067707,0.0067707,0.0075904,0.0075904, 0.007786, 0.007786, 0.007830, 0.007830, 0.007715, 0.007715, 0.009511, 0.009511, 0.008990, 0.008990, 0.007757, 0.007757, 0.007792, 0.007792, 0.008105, 0.008105, 0.007414, 0.007414, 0.007995, 0.007995, 0.006659, 0.006659, 0.006854, 0.006854, 0.007292, 0.007292, 0.007640, 0.007640, 0.007733, 0.007733, 0.007291, 0.007291, 0.007571, 0.007571, 0.007147, 0.007147]
+,
+[0.18026,0.18026,0.19311,0.19311,0.19050,0.19050,0.19306,0.19306,0.18727,0.18727, 0.1818, 0.1818, 0.1826, 0.1826, 0.0350, 0.0350, 0.0466, 0.0466, 0.0482, 0.0482, 0.1448, 0.1448, 0.1385, 0.1385, 0.1200, 0.1200, 0.1389, 0.1389, 0.1577, 0.1577, 0.1508, 0.1508, 0.1383, 0.1383, 0.0613, 0.0613, 0.1113, 0.1113, 0.1699, 0.1699, 0.1801, 0.1801, 0.2060, 0.2060, 0.2404, 0.2404]
+,
+[-0.0558,-0.0558,-0.0489,-0.0489,-0.0304,-0.0304,-0.0329,-0.0329,-0.0174,-0.0174, -0.018, -0.018, -0.019, -0.019, -0.059, -0.059, -0.049, -0.049, -0.026, -0.026, -0.007, -0.007, -0.007, -0.007, -0.008, -0.008, -0.013, -0.013, -0.052, -0.052, -0.073, -0.073, -0.041, -0.041, -0.061, -0.061, -0.097, -0.097, -0.117, -0.117, -0.097, -0.097, -0.092, -0.092, -0.080, -0.080]
+,
+[0.0094886,0.0094886,0.0351844,0.0351844,0.0210694,0.0210694,0.0216640,0.0216640,0.0432143,0.0432143, 0.009460, 0.009460, 0.041191, 0.041191, 0.017876, 0.017876, 0.036349, 0.036349, -0.00244, -0.00244, 0.034868, 0.034868, 0.045777, 0.045777, 0.043585, 0.043585, 0.041136, 0.041136, 0.015408, 0.015408, 0.015342, 0.015342, 0.032333, 0.032333, 0.016842, 0.016842, 0.051248, 0.051248, 0.036994, 0.036994, 0.054457, 0.054457, 0.022557, 0.022557, 0.019547, 0.019547]
+,
+[0.17456,0.17456,0.18303,0.18303,0.21002,0.21002,0.24722,0.24722,0.22125,0.22125, 0.2098, 0.2098, 0.2089, 0.2089, 0.2024, 0.2024, 0.1549, 0.1549, 0.0761, 0.0761, 0.0369, 0.0369, 0.0402, 0.0402, 0.0582, 0.0582, 0.0528, 0.0528, 0.0307, 0.0307, 0.0337, 0.0337, 0.0535, 0.0535, 0.0600, 0.0600, 0.0553, 0.0553, 0.0683, 0.0683, 0.0041, 0.0041, 0.0498, 0.0498, 0.0539, 0.0539]
+]);
+//print("pLists", pLists);
+var gridList = ee.List(labelList).iterate(function(label, list) {
+  label = ee.Number(label);
+  list = ee.List(list);
+  var index = ee.List(labelList).indexOf(label);
+  var pList = ee.List(pLists.get(index));
+  var cell = grid.filter(ee.Filter.eq("label", label)).first();
+  cell = cell.set("pList", pList);
+  list = list.add(ee.Feature(cell));
+  return list;
+}, ee.List([]));
+grid = ee.FeatureCollection(ee.List(gridList));
+///////////////////////////////////////////////////////////
+ndviCol = ndviCol.map(function(image) {
+  var time_start = ee.Date(image.get("system:time_start"));
+  var year = time_start.get("year");
+  var pIndex = time_start.difference(ee.Date.fromYMD(year, 1, 1), "day")
+                         .divide(8);
+  var index = year.subtract(2000)
+                  .multiply(46)
+                  .add(pIndex);
+  image = image.set("year", year.toInt());
+  image = image.set("pIndex", pIndex.toInt());
+  image = image.set("index", ee.String(index.toInt()));
+  return image;
+});
+//////////////////////////////////////////////////
+var waterImageCol = grid.map(function(feature) {
+  var label = feature.get("label");
+  var pList = ee.List(feature.get("pList"));
+  var tempCol = ndviCol.map(function(image) {
+    var pIndex = image.get("pIndex");
+    var pv = ee.Number(pList.get(pIndex));
+    var nd = image.select("nd");
+    var band1=image.select('sur_refl_b01');
+    var band2=image.select('sur_refl_b02');
+    var state = image.select("State");
+    var qa = image.select("QA");
+    var data1 = nd.updateMask(land.eq(1)).lt(pv);
+    ////// !!! label cloud and snowice!!!!!!!!!!!! 
+    var cloud1BitMask = (1 << 1);
+    var cloud0BitMask = (1 << 0);
+    var snowiceBitMask = (1 << 12);
+    data1 = data1.where(state.bitwiseAnd(cloud0BitMask).neq(0)
+                            .or(state.bitwiseAnd(cloud1BitMask).neq(0)), 6);
+    data1 = data1.where(state.bitwiseAnd(snowiceBitMask).neq(0),3);
+    data1=data1.remap([1,3,0,6],[1,3,4,6]);
+    ////// !!! label missing input!!!!!!!!!!!!   
+    ////////////red
+    var band1_4 = (1 << 4);
+    var band1_5 = (1 << 5);
+    var band1_6 = (1 << 6);
+    var band1_7 = (1 << 7);
+    var redCondition=qa.bitwiseAnd(band1_4).neq(0)
+                      .and(qa.bitwiseAnd(band1_5).eq(0))
+                      .and(qa.bitwiseAnd(band1_6).neq(0))
+                      .and(qa.bitwiseAnd(band1_7).neq(0));
+    ///////////nir                      
+    var band2_8 = (1 << 8);
+    var band2_9 = (1 << 9);
+    var band2_10 = (1 << 10);
+    var band2_11 = (1 << 11);
+    var nirCondition=qa.bitwiseAnd(band2_8).neq(0)
+                      .and(qa.bitwiseAnd(band2_9).eq(0))
+                      .and(qa.bitwiseAnd(band2_10).neq(0))
+                      .and(qa.bitwiseAnd(band2_11).neq(0));
+    //////////red&&nir
+    var redNirCondition=qa.bitwiseAnd(band1_4).neq(0)
+                      .and(qa.bitwiseAnd(band1_5).eq(0))
+                      .and(qa.bitwiseAnd(band1_6).neq(0))
+                      .and(qa.bitwiseAnd(band1_7).neq(0))
+                      .and(qa.bitwiseAnd(band2_8).neq(0))
+                      .and(qa.bitwiseAnd(band2_9).eq(0))
+                      .and(qa.bitwiseAnd(band2_10).neq(0))
+                      .and(qa.bitwiseAnd(band2_11).neq(0));
+    data1 = data1.where(nd.eq(99),99)
+    data1 = data1.where(redCondition.eq(1).and(nirCondition.neq(1)).and(nd.eq(99)),6);
+    data1 = data1.where(nirCondition.eq(1).and(redCondition.neq(1)).and(nd.eq(99)),6);
+    data1 = data1.where(redNirCondition.eq(1).and(nd.eq(99)),6);
+     data1=data1.updateMask(data1.neq(99))
+    ////////////////////1-water,3-ice&snow,4-land,5-mountain shadow,6-cloud
+    ////////////////////////////////exclude snow,moutain shadow,soil from MOD09A1,DEM,MOD09A1
+    var time=image.get("system:time_start");
+    var MOD09A1=MOD09A1Collection.filterMetadata('system:time_start','equals',time).first();
+    var NDSI=MOD09A1.normalizedDifference(['sur_refl_b04', 'sur_refl_b06'])
+    .rename(ee.String('NDSI').cat(ee.Number(time).format("%d")));
+    var MOD11A2=MOD11A2Collection.filterMetadata('system:time_start','equals',time).first();
+    var temperature=MOD11A2.select('LST_Day_1km').multiply(0.02).subtract(273.15);
+    ///////////////NDSI>0.4&&NIR>0.11&&GREEN>0.1
+    var snowCondition=NDSI.gt(0.4)
+    .and(ee.Image(MOD09A1).select('sur_refl_b02').gt(1100))
+    .and(ee.Image(MOD09A1).select('sur_refl_b04').gt(1000))
+    .and(data1.eq(1)).and(temperature.lt(15));
+    data1=data1.where(snowCondition,3);
+    /////////////////
+    DEM=DEM.reproject('SR-ORG:6974',null,90);
+    var slope=ee.Terrain.slope(DEM);
+    data1=data1.where(data1.eq(1).and(slope.gt(5)),5);
+    var desertCondition=data1.eq(1).and(MOD09A1.select('sur_refl_b06').gt(1000))
+  .and((MOD09A1.select('sur_refl_b06').subtract(MOD09A1.select('sur_refl_b02'))).gt(200));
+    data1=data1.where(desertCondition,4);
+  
+    data1=data1.rename([ee.String('band').cat(image.get("index")).cat(ee.String('_')).cat(image.get('system:index'))]);
+    data1 = data1.set("system:index", ee.String('band').cat(image.get("index")));
+    return data1;
+  });
+  function batchRename(image){
+  var rename=image.bandNames().map(function(name){
+    return ee.String(name).slice(11);
+  })
+  return image.rename(rename);
+}
+  //merge to a image of 46images per year every grid
+  var waterStacking = batchRename(tempCol.toBands()).clip(feature);
+  waterStacking = waterStacking.set("system:index", ee.String("grid-").cat(ee.String(label)));
+  waterStacking = waterStacking.set("label", label);
+  
+  return waterStacking;
+});
+print(waterImageCol,'water');
+
+
+//////////////////****************************************//////////////////////////////////
+//////interpolation/////////////////////
+ var interpolation3=waterImageCol.map(function(image){
+  //rename interpolation result in every step 
+function batchRename(image){
+  var rename=image.bandNames().map(function(name){
+    var names=ee.String(name).split('_');
+    return ee.String(names.get(1)).cat(ee.String('_'))
+    .cat(ee.String(names.get(2))).cat(ee.String('_'))
+    .cat(ee.String(names.get(3))).cat(ee.String('_'))
+    .cat(ee.String(names.get(4)));
+  })
+  return image.rename(rename);
+}
+//********the first step to interpolate////
+// ******************************///////
+var OriginalImage = ee.Image(image);
+var bandNames=OriginalImage.bandNames();
+// set lag day range to use for scene interpolation (also retrieves images within this 
+// time span on either side of desired composite range)
+var lagRange = 8;
+var NDVICols=ee.ImageCollection(bandNames.map(function(BandNameElement){
+  var stringLength=ee.String(BandNameElement).length();
+  var stryearBegin=ee.String(BandNameElement).slice(-10,-1)
+  var startIndex=ee.String(BandNameElement).rindex(stryearBegin)
+  var DateString=ee.String(BandNameElement).slice(startIndex,startIndex.add(10))
+  var yearStr=ee.Number.parse(DateString.slice(0,4));
+  var monthStr=ee.Number.parse(DateString.slice(5,7));
+  var DayStr=ee.Number.parse(DateString.slice(8,10));
+   
+  return ee.Image(OriginalImage.select([BandNameElement])).rename(['B1']).cast({"B1": "int8"}, ["B1"])
+.set('system:time_start', ee.Date.fromYMD(yearStr.int(), monthStr.int(), DayStr.int()).millis())
+.set('bandName',BandNameElement)
+}))
+NDVICols=NDVICols.filterMetadata('bandName',"not_equals",'band6_2000_02_18');
+NDVICols=NDVICols.filterMetadata('bandName',"not_equals",'band68_2001_06_26');
+NDVICols=NDVICols.filterMetadata('bandName',"not_equals",'band742_2016_02_18');
+NDVICols=NDVICols.filterMetadata('bandName',"not_equals",'band845_2018_05_17');
+// Looks for all images up to 'lagRange' days away from the current image.
+var maxDiffFilter = ee.Filter([
+  ee.Filter.maxDifference({
+    difference: lagRange * 24 * 60 * 60 * 1000,
+    leftField: 'system:time_start',
+    rightField: 'system:time_start'
+  })]);
+// Images after, sorted in descending order (so closest is last).
+//here we cannot remove the equals, otherwise the timeseries will lost last element
+var  FilterAfter= ee.Filter.and(maxDiffFilter, ee.Filter.lessThanOrEquals('system:time_start', null, 'system:time_start'))
+var NDVI_AfterJoinedCols = ee.Join.saveAll('after', 'system:time_start', false).apply(NDVICols, NDVICols, FilterAfter)
+// Images before, sorted in ascending order (so closest is last).
+//here we cannot remove the equals, otherwise the timeseries will lost first element
+var FilterBefore = ee.Filter.and(maxDiffFilter, ee.Filter.greaterThanOrEquals('system:time_start', null, 'system:time_start'))
+var NDVI_Before_AfterJoinedCols = ee.Join.saveAll('before', 'system:time_start', true).apply(NDVI_AfterJoinedCols, NDVICols, FilterBefore)
+var interpolation1 = ee.ImageCollection(NDVI_Before_AfterJoinedCols.map(function(img) {
+  var image = ee.Image(img);
+  var ImgbandName=image.get('bandName');
+  var needFixMask=image.eq(ee.Image(6));
+//because we need to exclusive the image itself
+//for the begin
+  var ImageListBefore=ee.List(image.get('before'));
+//operate on the before list
+  var beforeCols =ee.Image(ImageListBefore.get(0));
+//for the end
+  var ImageListAfter=ee.List(image.get('after'));
+//operate on the after list
+  var afterCols = ee.Image(ImageListAfter.get(0));
+  
+  // var con=ee.Algorithms.If((beforeCols.eq(afterCols)).and(beforeCols.neq(8)).and(afterCols.neq(8)),
+  // beforeCols.where(beforeCols.eq(1),2),image);
+  var con=(beforeCols.eq(afterCols)).and(beforeCols.neq(ee.Image(6)))
+  .and(beforeCols.mask().eq(ee.Image(1))).unmask();
+  var usedCon=con.eq(ee.Image(1)).multiply(beforeCols.where(beforeCols.eq(ee.Image(1)),ee.Image(2)).unmask())
+  .add(con.neq(ee.Image(1)).multiply(image.unmask()));
+  
+  //begin to interp
+  var interp =needFixMask.not().multiply(image).add(needFixMask.multiply(usedCon)).rename(['B1']);
+  //assgin the time to the processed var
+  return interp.cast({"B1": "int8"}, ["B1"]).rename([ImgbandName])
+  .set('system:time_start', img.get('system:time_start'))
+  .set('bandName',ImgbandName).toUint8();
+}))
+interpolation1=batchRename(interpolation1.toBands());
+
+//********the second 2 step to interpolate////
+// ******************************///////
+var OriginalImage = ee.Image(interpolation1);
+var bandNames=OriginalImage.bandNames();
+// set lag day range to use for scene interpolation (also retrieves images within this 
+// time span on either side of desired composite range)
+var lagRange = 16;
+var NDVICols=ee.ImageCollection(bandNames.map(function(BandNameElement){
+  var stringLength=ee.String(BandNameElement).length();
+  var stryearBegin=ee.String(BandNameElement).slice(-10,-1)
+  var startIndex=ee.String(BandNameElement).rindex(stryearBegin)
+  var DateString=ee.String(BandNameElement).slice(startIndex,startIndex.add(10))
+  var yearStr=ee.Number.parse(DateString.slice(0,4));
+  var monthStr=ee.Number.parse(DateString.slice(5,7));
+  var DayStr=ee.Number.parse(DateString.slice(8,10));
+   
+  return ee.Image(OriginalImage.select([BandNameElement])).rename(['B1']).cast({"B1": "int8"}, ["B1"])
+.set('system:time_start', ee.Date.fromYMD(yearStr.int(), monthStr.int(), DayStr.int()).millis())
+.set('bandName',BandNameElement)
+}))
+// Looks for all images up to 'lagRange' days away from the current image.
+var maxDiffFilter = ee.Filter([
+  ee.Filter.maxDifference({
+    difference: lagRange * 24 * 60 * 60 * 1000,
+    leftField: 'system:time_start',
+    rightField: 'system:time_start'
+  })]);
+// Images after, sorted in descending order (so closest is last).
+//here we cannot remove the equals, otherwise the timeseries will lost last element
+var  FilterAfter= ee.Filter.and(maxDiffFilter, ee.Filter.lessThanOrEquals('system:time_start', null, 'system:time_start'))
+var NDVI_AfterJoinedCols = ee.Join.saveAll('after', 'system:time_start', false).apply(NDVICols, NDVICols, FilterAfter)
+// Images before, sorted in ascending order (so closest is last).
+//here we cannot remove the equals, otherwise the timeseries will lost first element
+var FilterBefore = ee.Filter.and(maxDiffFilter, ee.Filter.greaterThanOrEquals('system:time_start', null, 'system:time_start'))
+var NDVI_Before_AfterJoinedCols = ee.Join.saveAll('before', 'system:time_start', true).apply(NDVI_AfterJoinedCols, NDVICols, FilterBefore)
+
+var interpolation2 = ee.ImageCollection(NDVI_Before_AfterJoinedCols.map(function(img) {
+  var image = ee.Image(img);
+  var ImgbandName=image.get('bandName');
+  var needFixMask=image.eq(ee.Image(6));
+//because we need to exclusive the image itself
+//for the begin
+  var ImageListBefore=ee.List(image.get('before'));
+  var CountBefore=ImageListBefore.length();
+//operate on the before list
+  var beforeCols = ee.Algorithms.If(CountBefore.gte(2),
+  ee.ImageCollection.fromImages(ImageListBefore.slice(0,2)),
+  ee.ImageCollection.fromImages(ImageListBefore.slice(0,CountBefore)));
+//for the end
+  var ImageListAfter=ee.List(image.get('after'));
+  var CountAfter=ImageListAfter.length();
+//operate on the after list
+  var afterCols = ee.Algorithms.If(CountAfter.gte(2),
+  ee.ImageCollection.fromImages(ImageListAfter.slice(0,2)),
+  ee.ImageCollection.fromImages(ImageListAfter.slice(0,CountAfter)));
+//combine the before and after cols  
+  var combinedBeforeAfterCols=ee.ImageCollection(beforeCols).merge(afterCols);
+  // the most common value at each pixel of six 
+  var MostCommonImage= combinedBeforeAfterCols.map(function(image){
+    return image.updateMask(image.neq(6));
+  }).mode()
+  MostCommonImage=MostCommonImage.unmask(6);
+  //begin to interp
+  var interp =needFixMask.not().multiply(image).add(needFixMask.multiply(MostCommonImage)).rename(['B1']);
+  var mask=MostCommonImage.eq(1).and(image.neq(1)).and(needFixMask.eq(1));
+  interp=interp.where(mask.eq(1),2);
+  interp=interp.where(image.eq(2),2);
+  //assgin the time to the processed var
+  return interp.cast({"B1": "int8"}, ["B1"]).rename([ImgbandName])
+  .set('system:time_start', img.get('system:time_start'))
+  .set('bandName',ImgbandName).toUint8();
+}))
+ interpolation2=batchRename(interpolation2.toBands());
+
+
+
+//********the third  3  step to interpolate////
+// ******************************///////
+var OriginalImage = ee.Image(interpolation2);
+var bandNames=OriginalImage.bandNames();
+// set lag day range to use for scene interpolation (also retrieves images within this 
+// time span on either side of desired composite range)
+var lagRange = 24;
+var NDVICols=ee.ImageCollection(bandNames.map(function(BandNameElement){
+  var stringLength=ee.String(BandNameElement).length();
+  var stryearBegin=ee.String(BandNameElement).slice(-10,-1)
+  var startIndex=ee.String(BandNameElement).rindex(stryearBegin)
+  var DateString=ee.String(BandNameElement).slice(startIndex,startIndex.add(10))
+  var yearStr=ee.Number.parse(DateString.slice(0,4));
+  var monthStr=ee.Number.parse(DateString.slice(5,7));
+  var DayStr=ee.Number.parse(DateString.slice(8,10));
+   
+  return ee.Image(OriginalImage.select([BandNameElement])).rename(['B1']).cast({"B1": "int8"}, ["B1"])
+.set('system:time_start', ee.Date.fromYMD(yearStr.int(), monthStr.int(), DayStr.int()).millis())
+.set('bandName',BandNameElement)
+}))
+// Looks for all images up to 'lagRange' days away from the current image.
+var maxDiffFilter = ee.Filter([
+  ee.Filter.maxDifference({
+    difference: lagRange * 24 * 60 * 60 * 1000,
+    leftField: 'system:time_start',
+    rightField: 'system:time_start'
+  })]);
+// Images after, sorted in descending order (so closest is last).
+//here we cannot remove the equals, otherwise the timeseries will lost last element
+var  FilterAfter= ee.Filter.and(maxDiffFilter, ee.Filter.lessThanOrEquals('system:time_start', null, 'system:time_start'))
+var NDVI_AfterJoinedCols = ee.Join.saveAll('after', 'system:time_start', false).apply(NDVICols, NDVICols, FilterAfter)
+// Images before, sorted in ascending order (so closest is last).
+//here we cannot remove the equals, otherwise the timeseries will lost first element
+var FilterBefore = ee.Filter.and(maxDiffFilter, ee.Filter.greaterThanOrEquals('system:time_start', null, 'system:time_start'))
+var NDVI_Before_AfterJoinedCols = ee.Join.saveAll('before', 'system:time_start', true).apply(NDVI_AfterJoinedCols, NDVICols, FilterBefore)
+var interpolation3 = ee.ImageCollection(NDVI_Before_AfterJoinedCols.map(function(img) {
+  var image = ee.Image(img);
+  var ImgbandName=image.get('bandName');
+  var needFixMask=image.eq(ee.Image(6));
+//because we need to exclusive the image itself
+//for the begin
+  var ImageListBefore=ee.List(image.get('before'));
+  var CountBefore=ImageListBefore.length();
+//operate on the before list
+  var beforeCols = ee.Algorithms.If(CountBefore.gte(3),
+  ee.ImageCollection.fromImages(ImageListBefore.slice(0,3)),
+  ee.ImageCollection.fromImages(ImageListBefore.slice(0,CountBefore)));
+//for the end
+  var ImageListAfter=ee.List(image.get('after'));
+  var CountAfter=ImageListAfter.length();
+//operate on the after list
+  var afterCols = ee.Algorithms.If(CountAfter.gte(3),
+  ee.ImageCollection.fromImages(ImageListAfter.slice(0,3)),
+  ee.ImageCollection.fromImages(ImageListAfter.slice(0,CountAfter)));
+//combine the before and after cols  
+  var combinedBeforeAfterCols=ee.ImageCollection(beforeCols).merge(afterCols);
+  // the most common value at each pixel of six 
+  var MostCommonImage= combinedBeforeAfterCols.map(function(image){
+    return image.updateMask(image.neq(6));
+  }).mode();
+  MostCommonImage=MostCommonImage.unmask(6);
+  //begin to interp
+  var interp =needFixMask.not().multiply(image).add(needFixMask.multiply(MostCommonImage)).rename(['B1']);
+  var mask=MostCommonImage.eq(1).and(image.neq(1)).and(needFixMask.eq(1));
+  interp=interp.where(mask.eq(1),2);
+  interp=interp.where(image.eq(2),2);
+  //assgin the time to the processed var
+  return interp.cast({"B1": "int8"}, ["B1"]).rename([ImgbandName])
+  .set('system:time_start', img.get('system:time_start'))
+  .set('bandName',ImgbandName).toUint8();
+}))
+interpolation3=batchRename(interpolation3.toBands());
+return interpolation3.reproject('EPSG:4326',null,250);
+})
+print('interpolation3',interpolation3);
+
+var image = ee.Image('MODIS/006/MOD09Q1/2017_06_18').updateMask(land.eq(1)).clip(grid);
+Map.addLayer(image, visParams, 'MOD09Q1noisefree');  
+
+var indexList = waterImageCol.reduceColumns(ee.Reducer.toList(), ["system:index"])
+                             .get("list");
+indexList.evaluate(function(indexs) {
+  // every grid
+  for (var i = 0; i < indexs.length; i++) {
+      var waterStacking = ee.Image(waterImageCol.filter(ee.Filter.eq("system:index", indexs[i]))
+                                                .first());
+      var interStacking=ee.Image(interpolation3.filter(ee.Filter.eq("system:index", indexs[i]))
+                                                .first());
+                                                
+ var vis = {min:1,max:6,
+////////////////////1-water,2-interWater,3-ice&snow,4-land,5-mountain shadow,6-cloud
+  palette: ['blue', 'blue', '#19ffff','green', 'black','white']
+};
+    //  Map.addLayer(waterStacking.select(796),vis,'before2017-6-18');
+    //  Map.addLayer(interStacking.select(794),vis,'after2017-6-18'); 
+      //Test Result
+      var label = waterStacking.get("label");
+      var index= waterStacking.get('system:index');
+      var cell = grid.filter(ee.Filter.eq("label", label)).geometry();
+      
+     
+      Export.image.toAsset({
+          image: interStacking,
+          description: ee.String(ee.Number(lon_start)).cat(ee.String('_')).cat(ee.String(ee.Number(lon_end)))
+          .cat(ee.String('_')).cat(ee.String(ee.Number(lat_start))).cat(ee.String('_')).cat(ee.String(ee.Number(lat_end)))
+       .cat(ee.String('_')).cat(ee.String('grid')).cat(ee.String(index)).cat(ee.String('_')).cat(ee.String('5'))
+       .cat(ee.String('_')).cat(ee.String('5')).cat(ee.String('_2022_Asset')).getInfo(),
+          scale: 250,
+          region: cell,
+          crs:"EPSG:4326",
+          assetId:ee.String('GSWED_America2022/').cat(ee.String(ee.Number(lon_start)).cat(ee.String('_')).cat(ee.String(ee.Number(lon_end)))
+          .cat(ee.String('_')).cat(ee.String(ee.Number(lat_start))).cat(ee.String('_')).cat(ee.String(ee.Number(lat_end)))
+       .cat(ee.String('_')).cat(ee.String('grid')).cat(ee.String(index)).cat(ee.String('_')).cat(ee.String('5'))
+       .cat(ee.String('_')).cat(ee.String('5')).cat(ee.String('_2022_Asset'))).getInfo(),
+       pyramidingPolicy:{'.default': 'sample'},
+          maxPixels: 1e11
+      });
+  }
+});

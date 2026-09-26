@@ -1,0 +1,520 @@
+
+// MAKE GRID FOR "REGIONAL" SST (3 STEPS
+// 1) Create bounding box (here, centered just left of Hawaii)
+var lon_start =-11;
+var lon_end =  54;
+var lat_start=46;
+var lat_end = 56;
+// 2) Decide no. of (in this case: equally sized) cells
+var num_cells =26;
+var lon_edge = 5;
+var lat_edge = 5;
+// 3) Create the grid
+var polys = [];
+var polys_line = [];
+var cell_id = 0;
+for (var lat = lat_start; lat < lat_end; lat += lat_edge) {
+    var y1 = lat;
+    var y2 = lat + lat_edge;
+    for (var lon = lon_start; lon < lon_end; lon += lon_edge) {
+        cell_id = cell_id + 1;
+        var x1 = lon;
+        var x2 = lon + lon_edge;
+        polys.push(ee.Feature(ee.Geometry.Rectangle(x1, y1, x2, y2), { label: cell_id }));
+    }
+}
+var grid = ee.FeatureCollection(polys);
+var labelList =[1,2,3,4,5,6,7,11,13,14,15,16,17,18,19,
+20,21,22,23,24,25].map(function(la){
+  return la+1;
+});
+grid = grid.filter(ee.Filter.inList("label", labelList));
+var gridOutlines = ee.Image().toByte()
+                     .paint(grid, 0, 2);
+// Next, use this variable to display just the grid outlines
+Map.addLayer(gridOutlines, {palette: 'black',}, 'Grid');
+
+// Center map
+Map.centerObject(grid, 5);
+var addNDVI = function(image) {
+    var ndvi = image.normalizedDifference(['sur_refl_b02', 'sur_refl_b01']).unmask(99);
+    return image.addBands(ndvi);
+};
+
+var land = dem.gt(-500);
+// A function to mask out cloudy pixels.
+function rmCloud(image) {
+    var cloud0BitMask = (1 << 0);
+    var cloud1BitMask = (1 << 1);
+    var snowIceBitMask = (1 << 12);
+    var qa = image.select("State");
+    var mask = qa.bitwiseAnd(cloud0BitMask).eq(0)
+                 .and(qa.bitwiseAnd(cloud1BitMask).eq(0))
+    .and(qa.bitwiseAnd(snowIceBitMask).eq(0));
+    return image.updateMask(land.eq(1)).updateMask(mask);
+}
+var ndviCol = MOD09Q1Collection.filterDate("2000-1-1", "2021-1-1")
+                             .map(addNDVI)
+                             .select(['sur_refl_b01','sur_refl_b02','nd', 'State', 'QA']);
+var visParams = {
+    bands: ["sur_refl_b02", "sur_refl_b01", "sur_refl_b02"],
+    min: 10,
+    max: 8000
+};
+
+//对应筛选的格子，每一个格子与每一年中的每一期影像筛选是一一对应的
+var pLists = ee.List([
+[0.0788907261395734, 0.0788907261395734, 0.0727073419982725, 0.0727073419982725, 0.07280879796414058, 0.07280879796414058, 0.07328276014601923, 0.07328276014601923, 0.07867338995179453, 0.07867338995179453, 0.06387088861079175, 0.06387088861079175, 0.08901087095705558, 0.08901087095705558, 0.1014411864415536, 0.1014411864415536, 0.1039000466695784, 0.1039000466695784, 0.10878272855303582, 0.10878272855303582, 0.05431033366195449, 0.05431033366195449, 0.12896536982251014, 0.12896536982251014, 0.12394690616579013, 0.12394690616579013, 0.12706928158600048, 0.12706928158600048, 0.10310052495197246, 0.10310052495197246, 0.10297047625183026, 0.10297047625183026, 0.13171184980775716, 0.13171184980775716, 0.1027005802708142, 0.1027005802708142, 0.0969114988972416, 0.0969114988972416, 0.09377974043256965, 0.09377974043256965, 0.09111872351115323, 0.09111872351115323, 0.09409732720295597, 0.09409732720295597,0,0]
+,
+[0.14627127236124243, 0.14627127236124243, 0.1378777777777778, 0.1378777777777778, 0.1146185743237455, 0.1146185743237455, 0.12948909815131365, 0.12948909815131365, 0.12443691132879174, 0.12443691132879174, 0.12232745684002871, 0.12232745684002871, 0.1217467564908114, 0.1217467564908114, 0.15190981601957415, 0.15190981601957415, 0.21841476294122691, 0.21841476294122691, 0.21608382000707196, 0.21608382000707196, 0.18057852488831913, 0.18057852488831913, 0.17547878523840416, 0.17547878523840416, 0.15631736227552695, 0.15631736227552695, 0.1327015700744274, 0.1327015700744274, 0.13659898006817012, 0.13659898006817012, 0.16091666601470694, 0.16091666601470694, 0.15556503639964378, 0.15556503639964378, 0.14624064476825263, 0.14624064476825263, 0.15070913373365244, 0.15070913373365244, 0.1664468106841878, 0.1664468106841878, 0.1660252253646696, 0.1660252253646696, 0.17776751201800145, 0.17776751201800145, 0.17049089732256217, 0.17049089732256217,]
+,
+[0.10171823193970246,0.10171823193970246, 0.08963894746603833, 0.08963894746603833, 0.07167634380690463, 0.07167634380690463, 0.06999926155730785, 0.06999926155730785, 0.08777573881616484, 0.08777573881616484, 0.11942367588890514, 0.11942367588890514, 0.11885798853692124, 0.11885798853692124, 0.11917236370263408, 0.11917236370263408, 0.13779349891933873, 0.13779349891933873, 0.23369921571693866, 0.23369921571693866, 0.20817120527732713, 0.20817120527732713, 0.21735623340450577, 0.21735623340450577, 0.1534826335206472, 0.1534826335206472, 0.13140205129441865, 0.13140205129441865, 0.12719998713143993, 0.12719998713143993, 0.10661882298965644, 0.10661882298965644, 0.13530072591394365, 0.13530072591394365, 0.14281561464068232, 0.14281561464068232, 0.16214414490869827, 0.16214414490869827, 0.10552186013007415, 0.10552186013007415, 0.06891024873771866, 0.06891024873771866, 0.11150002025006849, 0.11150002025006849, 0.12765810238675795, 0.12765810238675795]
+,
+[0,0,0,0,0,0,0,0,0.07096449272911232, 0.07096449272911232, 0.11118018896519788, 0.11118018896519788, 0.08553607045044577, 0.08553607045044577, 0.1420813716335143, 0.1420813716335143, 0.14395483505339138, 0.14395483505339138, 0.14405404255319149, 0.14405404255319149, 0.12160993060924645, 0.12160993060924645, 0.10530994152046783, 0.10530994152046783, 0.042731803579643415, 0.042731803579643415, 0.03409187549446831, 0.03409187549446831, 0.06931711488709627, 0.06931711488709627, 0.029396095407066294, 0.029396095407066294, 0.04659052192499093, 0.04659052192499093, 0.1106896463907427, 0.1106896463907427, 0.1084594107404284, 0.1084594107404284, 0.12819755466185254, 0.12819755466185254, 0.09071072219950108, 0.09071072219950108, 0.08005346820118449, 0.08005346820118449, 0.08158160536841003, 0.08158160536841003]
+,
+[0,0,0,0,0,0,0,0,0.06875048407169897, 0.06875048407169897, 0.09444220010351922, 0.09444220010351922, 0.11714230412546942, 0.11714230412546942, 0.14098725914798224, 0.14098725914798224, 0.15533981614875172, 0.15533981614875172, 0.10885067733574026, 0.10885067733574026, 0.1171348499691874, 0.1171348499691874, 0.13243402170832594, 0.13243402170832594, 0.15570493138327124, 0.15570493138327124, 0.14673387142658317, 0.14673387142658317, 0.14803855081530398, 0.14803855081530398, 0.1481709749868629, 0.1481709749868629, 0.15372275874623312, 0.15372275874623312, 0.15553368918665517, 0.15553368918665517, 0.08285585325713347, 0.08285585325713347, 0.11727245048191866, 0.11727245048191866, 0.0959328307925794, 0.0959328307925794, 0.061279113933319536, 0.061279113933319536, 0.1022800744269855, 0.1022800744269855]
+,
+[0.061684787598311655, 0.061684787598311655, 0.07161610626578706, 0.07161610626578706, 0.07160318012341212, 0.07160318012341212, 0.08139674345415482, 0.08139674345415482, 0.06447537929798125, 0.06447537929798125, 0.08769566525167563, 0.08769566525167563, 0.12714321453506028, 0.12714321453506028, 0.14578589330062947, 0.14578589330062947, 0.1481784809160789, 0.1481784809160789, 0.2156355135226168, 0.2156355135226168, 0.2341726212492038, 0.2341726212492038, 0.226826419168123, 0.226826419168123, 0.20011954295486348, 0.20011954295486348, 0.19359189611457203, 0.19359189611457203, 0.17281024897868835, 0.17281024897868835, 0.15022927042325193, 0.15022927042325193, 0.1616923402474397, 0.1616923402474397, 0.16706111537020746, 0.16706111537020746, 0.1734818556984441, 0.1734818556984441, 0.17051708053895132, 0.17051708053895132, 0.15485190312432834, 0.15485190312432834, 0.08142403430324985, 0.08142403430324985, 0.10024575675134587, 0.10024575675134587]
+,
+[0,0,0.06316991541670794, 0.06316991541670794, 0.07294944608980715, 0.07294944608980715, 0.06943735453155989, 0.06943735453155989, 0.10546204492019176, 0.10546204492019176, 0.11784224621101716, 0.11784224621101716, 0.13758502946662, 0.13758502946662, 0.12981318178259096, 0.12981318178259096, 0.16215289553788687, 0.16215289553788687, 0.18858015687415405, 0.18858015687415405, 0.1669977943022879, 0.1669977943022879, 0.1911207523730155, 0.1911207523730155, 0.174351315777642, 0.174351315777642, 0.16058973172144902, 0.16058973172144902, 0.16957888434932786, 0.16957888434932786, 0.17315890764265954, 0.17315890764265954, 0.16150076352943474, 0.16150076352943474, 0.16526559439392235, 0.16526559439392235, 0.14377325389904205, 0.14377325389904205, 0.15957233983357377, 0.15957233983357377, 0.1564232142857143, 0.1564232142857143, 0.16582887823756634, 0.16582887823756634, 0.16138426371543968, 0.16138426371543968]
+,
+[0,0,0,0,0,0,0.015255408510059383,0.015255408510059383,0.010384961598461792, 0.010384961598461792, 0.030546027399381323, 0.030546027399381323, 0.020197716578608103, 0.020197716578608103, 0.04707205625367815, 0.04707205625367815, 0.04426513349172813, 0.04426513349172813, 0.12524377322151511, 0.12524377322151511, 0.06646302864681443, 0.06646302864681443, 0.06416543030495665, 0.06416543030495665, 0.06255635257115534, 0.06255635257115534, 0.04747599896065104, 0.04747599896065104, 0.04163200950627072, 0.04163200950627072, 0.05351136969769743, 0.05351136969769743, 0.05251657269277456, 0.05251657269277456, 0.06553592903538509, 0.06553592903538509, 0.05651248078834369, 0.05651248078834369, 0.029324903538367617, 0.029324903538367617, 0.04316628516623459, 0.04316628516623459, 0.041609415051095756, 0.041609415051095756, 0.03386060560347056, 0.03386060560347056]
+,
+[0.090599,0.090599,0.097998,0.097998,0.163350,0.163350,0.185890,0.185890,0.206129,0.206129, 0.21335, 0.21335, 0.27092, 0.27092, 0.24761, 0.24761, 0.20477, 0.20477, 0.23347, 0.23347, 0.21925, 0.21925, 0.17505, 0.17505, 0.13105, 0.13105, 0.11196, 0.11196, 0.19414, 0.19414, 0.16349, 0.16349, 0.07967, 0.07967, 0.18990, 0.18990, 0.19966, 0.19966, 0.15015, 0.15015, 0.02787, 0.02787, 0.05225, 0.05225, 0.02716, 0.02716]
+,
+[0.03615680638031395, 0.03615680638031395, 0.058939293399416906, 0.058939293399416906, 0.07654977294347594, 0.07654977294347594, 0.05911629365217679, 0.05911629365217679, 0.07812568517063363, 0.07812568517063363, 0.06410845884030342, 0.06410845884030342, 0.09031158740614069, 0.09031158740614069, 0.07714366070359599, 0.07714366070359599, 0.09160986135665902, 0.09160986135665902, 0.1033901414817063, 0.1033901414817063, 0.10569122807017543, 0.10569122807017543, 0.09255348837209303, 0.09255348837209303, 0.09377407455504973, 0.09377407455504973, 0.08215995695507262, 0.08215995695507262, 0.10654499356560665, 0.10654499356560665, 0.17882998546775497, 0.17882998546775497, 0.17483056864845223, 0.17483056864845223, 0.17571893017084914, 0.17571893017084914, 0.12621194069133135, 0.12621194069133135, 0.18568046716515588, 0.18568046716515588, 0.10934800200965623, 0.10934800200965623, 0.09525205514343338, 0.09525205514343338, 0.051034693171941925, 0.051034693171941925]
+,
+[0.10255265187182754, 0.10255265187182754, 0.11762160465860379, 0.11762160465860379, 0.11910346280488593, 0.11910346280488593, 0.11234049107398016, 0.11234049107398016, 0.13324544154621337, 0.13324544154621337, 0.11709973834965504, 0.11709973834965504, 0.10817409250404972, 0.10817409250404972, 0.13422463078900837, 0.13422463078900837, 0.12614160340638547, 0.12614160340638547, 0.1269900692420228, 0.1269900692420228, 0.15050653053597238, 0.15050653053597238, 0.105725826035859, 0.105725826035859, 0.12622120001374343, 0.12622120001374343, 0.1283665917551993, 0.1283665917551993, 0.16998135772673284, 0.16998135772673284, 0.16244653356039346, 0.16244653356039346, 0.1600141859040475, 0.1600141859040475, 0.14613871124545308, 0.14613871124545308, 0.1749005179046667, 0.1749005179046667, 0.13552899351695694, 0.13552899351695694, 0.09600842542081064, 0.09600842542081064, 0.14073276598729095, 0.14073276598729095, 0.11092663653030493, 0.11092663653030493]
+,
+[0.08470432545723686, 0.08470432545723686, 0.0905412402317488, 0.0905412402317488, 0.0743264934641457, 0.0743264934641457, 0.06853887967856383, 0.06853887967856383, 0.05518545168933516, 0.05518545168933516, 0.07488033037270443, 0.07488033037270443, 0.13965288719292843, 0.13965288719292843, 0.07298278286229716, 0.07298278286229716, 0.06735360824742267, 0.06735360824742267, 0.08282896761224062, 0.08282896761224062, 0.0673445652173913, 0.0673445652173913, 0.06453038051985487, 0.06453038051985487, 0.07323196721311476, 0.07323196721311476, 0.09635255717797162, 0.09635255717797162, 0.06998124007003725, 0.06998124007003725, 0.0846419868576246, 0.0846419868576246, 0.07402307692307693, 0.07402307692307693, 0.11553729112834393, 0.11553729112834393, 0.09567546264594799, 0.09567546264594799, 0.0971328484894898, 0.0971328484894898, 0.12274816031690676, 0.12274816031690676, 0.0997459814879922, 0.0997459814879922, 0.07443820831852303, 0.07443820831852303]
+,
+[0.09992360282190221, 0.09992360282190221, 0.1122838965223013, 0.1122838965223013, 0.12262515459121297, 0.12262515459121297, 0.13786923054603933, 0.13786923054603933, 0.12347715993971412, 0.12347715993971412, 0.13105345528455284, 0.13105345528455284, 0.1540623477161555, 0.1540623477161555, 0.1705512572377888, 0.1705512572377888, 0.17098630362372308, 0.17098630362372308, 0.21106115369076547, 0.21106115369076547, 0.13617325518960993, 0.13617325518960993, 0.1723139902728137, 0.1723139902728137, 0.19900037857018368,0.19900037857018368, 0.15321304941596645, 0.15321304941596645, 0.17279877233933855, 0.17279877233933855, 0.13608849240652898, 0.13608849240652898, 0.16600374314790808, 0.16600374314790808, 0.1703664607928496, 0.1703664607928496, 0.10521461059222362, 0.10521461059222362, 0.15691628717461253, 0.15691628717461253, 0.1461599062664279, 0.1461599062664279, 0.13583301343332996, 0.13583301343332996,0,0]
+,
+[0.12061127584933087, 0.12061127584933087, 0.1421258658914441, 0.1421258658914441, 0.09868214645765394, 0.09868214645765394, 0.11831150044491473, 0.11831150044491473, 0.12000253193185295, 0.12000253193185295, 0.13651791039709293, 0.13651791039709293, 0.1504188524590164, 0.1504188524590164, 0.1478611757923539, 0.1478611757923539, 0.16944192003468822, 0.16944192003468822, 0.19779377232102655, 0.19779377232102655, 0.1643230821628031, 0.1643230821628031, 0.15494469584809722, 0.15494469584809722, 0.21776740066977526, 0.21776740066977526, 0.1665182080325104, 0.1665182080325104, 0.17101666944964025, 0.17101666944964025, 0.1510506799056675, 0.1510506799056675, 0.16278760944265785, 0.16278760944265785, 0.14277026534835693, 0.14277026534835693, 0.1621611858892376, 0.1621611858892376, 0.14447765387161712, 0.14447765387161712, 0.12387186568297687, 0.12387186568297687, 0.15955580749658244, 0.15955580749658244, 0.11475248096783545, 0.11475248096783545]
+,
+[0,0,0,0,0,0,0.04736652606465025, 0.04736652606465025, 0.1071190313709866, 0.1071190313709866, 0.1304501579630708, 0.1304501579630708, 0.13957893873278376, 0.13957893873278376, 0.1591362806616523, 0.1591362806616523, 0.1639443201513784, 0.1639443201513784, 0.20864375043713954, 0.20864375043713954, 0.19181268175937224, 0.19181268175937224, 0.16510948776465034, 0.16510948776465034, 0.20550967487627606, 0.20550967487627606, 0.19116359740316785, 0.19116359740316785, 0.15950130464513654, 0.15950130464513654, 0.1768705829115069, 0.1768705829115069, 0.19571748508245262, 0.19571748508245262, 0.16990403097486004, 0.16990403097486004, 0.14578520689480723, 0.14578520689480723, 0.12004644251126911, 0.12004644251126911, 0.09901773659564272, 0.09901773659564272, 0.14494321751583117, 0.14494321751583117, 0.05425860465116279, 0.05425860465116279]
+,
+[0,0,0,0,0,0,0,0,0.051249060078719086, 0.051249060078719086, 0.13287660507857804, 0.13287660507857804, 0.12296540858381486, 0.12296540858381486, 0.15310461180525564, 0.15310461180525564, 0.17475065785257582, 0.17475065785257582, 0.20745858506626724, 0.20745858506626724, 0.17091964348874675, 0.17091964348874675, 0.18119833561650917, 0.18119833561650917, 0.20744928285898423, 0.20744928285898423, 0.20258672677784526, 0.20258672677784526, 0.17769949248569133, 0.17769949248569133, 0.16585507693577545, 0.16585507693577545, 0.18120738850276474, 0.18120738850276474, 0.18565015258256262, 0.18565015258256262, 0.18888451612903226, 0.18888451612903226, 0.11932775452554412, 0.11932775452554412,0,0,0,0,0,0]
+,
+[0,0,0,0,0,0,0,0,0.056431830959597105, 0.056431830959597105, 0.05576519807250187, 0.05576519807250187, 0.14220237752363538, 0.14220237752363538, 0.15276095455372468, 0.15276095455372468, 0.15917871769789826, 0.15917871769789826, 0.1818038093996445, 0.1818038093996445, 0.1726453342585545, 0.1726453342585545, 0.18108253753038173, 0.18108253753038173, 0.19802974994495207, 0.19802974994495207, 0.17755795170587946, 0.17755795170587946, 0.1580296309911129, 0.1580296309911129, 0.1619347260204323, 0.1619347260204323, 0.19825974754782433, 0.19825974754782433, 0.18998635030159547, 0.18998635030159547, 0.18174318962709488, 0.18174318962709488, 0.17090770277209172, 0.17090770277209172,0,0,0,0,0,0]
+,
+[0,0,0,0,0,0,0,0,0,0,0.043756968036769095, 0.043756968036769095, 0.05863232111146817, 0.05863232111146817, 0.09206661214216502, 0.09206661214216502, 0.10225440900771049, 0.10225440900771049, 0.15279997023492048, 0.15279997023492048, 0.16974060086737455, 0.16974060086737455, 0.16891543406663695, 0.16891543406663695, 0.17044953600670262, 0.17044953600670262, 0.18588011295926832, 0.18588011295926832, 0.1516100550791949, 0.1516100550791949, 0.19837795166130345, 0.19837795166130345, 0.16885956172128383, 0.16885956172128383, 0.15022314247920687, 0.15022314247920687, 0.1373122987711042, 0.1373122987711042, 0.14493862009546193, 0.14493862009546193,0,0,0,0,0,0]
+,
+[0,0,0,0,0,0,0,0,0,0,0,0,0.0681540343993512, 0.0681540343993512, 0.09699484574899213, 0.09699484574899213, 0.14437893065739715, 0.14437893065739715, 0.22079172445249035, 0.22079172445249035, 0.19793616735923542, 0.19793616735923542, 0.2407915362013438, 0.2407915362013438, 0.21405275146514818, 0.21405275146514818, 0.20620930182566694, 0.20620930182566694, 0.18255731770329886, 0.18255731770329886, 0.1590478988139031, 0.1590478988139031, 0.1513153017371356, 0.1513153017371356, 0.15210042435349724, 0.15210042435349724, 0.1619622037810081, 0.1619622037810081, 0.13515367987127655, 0.13515367987127655,0,0,0,0,0,0]
+,
+[0,0,0,0,0,0,0,0,0,0,0,0,0.0110806276157666, 0.0110806276157666, 0.06412218528730536, 0.06412218528730536, 0.13016713667705512, 0.13016713667705512, 0.1724681308551711, 0.1724681308551711, 0.16147231573750212, 0.16147231573750212, 0.16317902903807563, 0.16317902903807563, 0.16746675351937046, 0.16746675351937046, 0.15067088866545564, 0.15067088866545564, 0.14581204384178634, 0.14581204384178634, 0.15549773280418855, 0.15549773280418855, 0.15432776274426718, 0.15432776274426718, 0.14175800051197507, 0.14175800051197507, 0.14191254640046175, 0.14191254640046175, 0.14467372623532435, 0.14467372623532435,0,0,0,0,0,0]
+,
+[0,0,0,0,0,0,0,0,0,0,0,0,0.01695450760595716, 0.01695450760595716, 0.05237016089482288, 0.05237016089482288, 0.08408626810931945, 0.08408626810931945, 0.16930298725128579, 0.16930298725128579, 0.16311661905239877, 0.16311661905239877, 0.15168615761629067, 0.15168615761629067, 0.15910463544722414, 0.15910463544722414, 0.1565079445505941, 0.1565079445505941, 0.15371389263656973, 0.15371389263656973, 0.14527294013534126, 0.14527294013534126, 0.15506668551055916, 0.15506668551055916, 0.12724478920908278, 0.12724478920908278, 0.13344520447455557, 0.13344520447455557,0,0,0,0,0,0,0,0]
+]);
+//print("pLists", pLists);
+var gridList = ee.List(labelList).iterate(function(label, list) {
+  label = ee.Number(label);
+  list = ee.List(list);
+  var index = ee.List(labelList).indexOf(label);
+  var pList = ee.List(pLists.get(index));
+  var cell = grid.filter(ee.Filter.eq("label", label)).first();
+  cell = cell.set("pList", pList);
+  list = list.add(ee.Feature(cell));
+  return list;
+}, ee.List([]));
+grid = ee.FeatureCollection(ee.List(gridList));
+///////////////////////////////////////////////////////////
+ndviCol = ndviCol.map(function(image) {
+  var time_start = ee.Date(image.get("system:time_start"));
+  var year = time_start.get("year");
+  var pIndex = time_start.difference(ee.Date.fromYMD(year, 1, 1), "day")
+                         .divide(8);
+  var index = year.subtract(2000)
+                  .multiply(46)
+                  .add(pIndex);
+  image = image.set("year", year.toInt());
+  image = image.set("pIndex", pIndex.toInt());
+  image = image.set("index", ee.String(index.toInt()));
+  return image;
+});
+//////////////////////////////////////////////////
+var waterImageCol = grid.map(function(feature) {
+  var label = feature.get("label");
+  var pList = ee.List(feature.get("pList"));
+  var tempCol = ndviCol.map(function(image) {
+    var pIndex = image.get("pIndex");
+    var pv = ee.Number(pList.get(pIndex));
+    var nd = image.select("nd");
+    var band1=image.select('sur_refl_b01');
+    var band2=image.select('sur_refl_b02');
+    var state = image.select("State");
+    var qa = image.select("QA");
+    var data1 = nd.updateMask(land.eq(1)).lt(pv);
+    ////// !!! label cloud and snowice!!!!!!!!!!!! 
+    var cloud1BitMask = (1 << 1);
+    var cloud0BitMask = (1 << 0);
+    var snowiceBitMask = (1 << 12);
+    data1 = data1.where(state.bitwiseAnd(cloud0BitMask).neq(0)
+                            .or(state.bitwiseAnd(cloud1BitMask).neq(0)), 6);
+    data1 = data1.where(state.bitwiseAnd(snowiceBitMask).neq(0),3);
+    data1=data1.remap([1,3,0,6],[1,3,4,6]);
+    ////// !!! label missing input!!!!!!!!!!!!   
+    ////////////red
+    var band1_4 = (1 << 4);
+    var band1_5 = (1 << 5);
+    var band1_6 = (1 << 6);
+    var band1_7 = (1 << 7);
+    var redCondition=qa.bitwiseAnd(band1_4).neq(0)
+                      .and(qa.bitwiseAnd(band1_5).eq(0))
+                      .and(qa.bitwiseAnd(band1_6).neq(0))
+                      .and(qa.bitwiseAnd(band1_7).neq(0));
+    ///////////nir                      
+    var band2_8 = (1 << 8);
+    var band2_9 = (1 << 9);
+    var band2_10 = (1 << 10);
+    var band2_11 = (1 << 11);
+    var nirCondition=qa.bitwiseAnd(band2_8).neq(0)
+                      .and(qa.bitwiseAnd(band2_9).eq(0))
+                      .and(qa.bitwiseAnd(band2_10).neq(0))
+                      .and(qa.bitwiseAnd(band2_11).neq(0));
+    //////////red&&nir
+    var redNirCondition=qa.bitwiseAnd(band1_4).neq(0)
+                      .and(qa.bitwiseAnd(band1_5).eq(0))
+                      .and(qa.bitwiseAnd(band1_6).neq(0))
+                      .and(qa.bitwiseAnd(band1_7).neq(0))
+                      .and(qa.bitwiseAnd(band2_8).neq(0))
+                      .and(qa.bitwiseAnd(band2_9).eq(0))
+                      .and(qa.bitwiseAnd(band2_10).neq(0))
+                      .and(qa.bitwiseAnd(band2_11).neq(0));
+    data1 = data1.where(nd.eq(99),99)
+    data1 = data1.where(redCondition.eq(1).and(nirCondition.neq(1)).and(nd.eq(99)),6);
+    data1 = data1.where(nirCondition.eq(1).and(redCondition.neq(1)).and(nd.eq(99)),6);
+    data1 = data1.where(redNirCondition.eq(1).and(nd.eq(99)),6);
+     data1=data1.updateMask(data1.neq(99))
+    ////////////////////1-water,3-ice&snow,4-land,5-mountain shadow,6-cloud
+    ////////////////////////////////exclude snow,moutain shadow,soil from MOD09A1,DEM,MOD09A1
+    var time=image.get("system:time_start");
+    var MOD09A1=MOD09A1Collection.filterMetadata('system:time_start','equals',time).first();
+    var NDSI=MOD09A1.normalizedDifference(['sur_refl_b04', 'sur_refl_b06'])
+    .rename(ee.String('NDSI').cat(ee.String(time)));
+    var MOD11A2=MOD11A2Collection.filterMetadata('system:time_start','equals',time).first();
+    var temperature=MOD11A2.select('LST_Day_1km').multiply(0.02).subtract(273.15);
+    ///////////////NDSI>0.4&&NIR>0.11&&GREEN>0.1
+    var snowCondition=NDSI.gt(0.4)
+    .and(ee.Image(MOD09A1).select('sur_refl_b02').gt(1100))
+    .and(ee.Image(MOD09A1).select('sur_refl_b04').gt(1000))
+    .and(data1.eq(1)).and(temperature.lt(15));
+    data1=data1.where(snowCondition,3);
+    /////////////////
+    DEM=DEM.reproject('SR-ORG:6974',null,90);
+    var slope=ee.Terrain.slope(DEM);
+    data1=data1.where(data1.eq(1).and(slope.gt(5)),5);
+    var desertCondition=data1.eq(1).and(MOD09A1.select('sur_refl_b06').gt(1000))
+  .and((MOD09A1.select('sur_refl_b06').subtract(MOD09A1.select('sur_refl_b02'))).gt(200));
+    data1=data1.where(desertCondition,4);
+  
+    data1=data1.rename([ee.String('band').cat(image.get("index")).cat(ee.String('_')).cat(image.get('system:index'))]);
+    data1 = data1.set("system:index", ee.String('band').cat(image.get("index")));
+    return data1;
+  });
+  function batchRename(image){
+  var rename=image.bandNames().map(function(name){
+    return ee.String(name).slice(11);
+  })
+  return image.rename(rename);
+}
+  //merge to a image of 46images per year every grid
+  var waterStacking = batchRename(tempCol.toBands()).clip(feature);
+  waterStacking = waterStacking.set("system:index", ee.String("grid-").cat(ee.String(label)));
+  waterStacking = waterStacking.set("label", label);
+  
+  return waterStacking;
+});
+print(waterImageCol,'water');
+
+
+//////////////////****************************************//////////////////////////////////
+//////interpolation/////////////////////
+ var interpolation3=waterImageCol.map(function(image){
+  //rename interpolation result in every step 
+function batchRename(image){
+  var rename=image.bandNames().map(function(name){
+    var names=ee.String(name).split('_');
+    return ee.String(names.get(1)).cat(ee.String('_'))
+    .cat(ee.String(names.get(2))).cat(ee.String('_'))
+    .cat(ee.String(names.get(3))).cat(ee.String('_'))
+    .cat(ee.String(names.get(4)));
+  })
+  return image.rename(rename);
+}
+//********the first step to interpolate////
+// ******************************///////
+var OriginalImage = ee.Image(image);
+var bandNames=OriginalImage.bandNames();
+// set lag day range to use for scene interpolation (also retrieves images within this 
+// time span on either side of desired composite range)
+var lagRange = 8;
+var NDVICols=ee.ImageCollection(bandNames.map(function(BandNameElement){
+  var stringLength=ee.String(BandNameElement).length();
+  var stryearBegin=ee.String(BandNameElement).slice(-10,-1)
+  var startIndex=ee.String(BandNameElement).rindex(stryearBegin)
+  var DateString=ee.String(BandNameElement).slice(startIndex,startIndex.add(10))
+  var yearStr=ee.Number.parse(DateString.slice(0,4));
+  var monthStr=ee.Number.parse(DateString.slice(5,7));
+  var DayStr=ee.Number.parse(DateString.slice(8,10));
+   
+  return ee.Image(OriginalImage.select([BandNameElement])).rename(['B1']).cast({"B1": "int8"}, ["B1"])
+.set('system:time_start', ee.Date.fromYMD(yearStr.int(), monthStr.int(), DayStr.int()).millis())
+.set('bandName',BandNameElement)
+}))
+NDVICols=NDVICols.filterMetadata('bandName',"not_equals",'band6_2000_02_18');
+NDVICols=NDVICols.filterMetadata('bandName',"not_equals",'band68_2001_06_26');
+NDVICols=NDVICols.filterMetadata('bandName',"not_equals",'band742_2016_02_18');
+NDVICols=NDVICols.filterMetadata('bandName',"not_equals",'band845_2018_05_17');
+// Looks for all images up to 'lagRange' days away from the current image.
+var maxDiffFilter = ee.Filter([
+  ee.Filter.maxDifference({
+    difference: lagRange * 24 * 60 * 60 * 1000,
+    leftField: 'system:time_start',
+    rightField: 'system:time_start'
+  })]);
+// Images after, sorted in descending order (so closest is last).
+//here we cannot remove the equals, otherwise the timeseries will lost last element
+var  FilterAfter= ee.Filter.and(maxDiffFilter, ee.Filter.lessThanOrEquals('system:time_start', null, 'system:time_start'))
+var NDVI_AfterJoinedCols = ee.Join.saveAll('after', 'system:time_start', false).apply(NDVICols, NDVICols, FilterAfter)
+// Images before, sorted in ascending order (so closest is last).
+//here we cannot remove the equals, otherwise the timeseries will lost first element
+var FilterBefore = ee.Filter.and(maxDiffFilter, ee.Filter.greaterThanOrEquals('system:time_start', null, 'system:time_start'))
+var NDVI_Before_AfterJoinedCols = ee.Join.saveAll('before', 'system:time_start', true).apply(NDVI_AfterJoinedCols, NDVICols, FilterBefore)
+var interpolation1 = ee.ImageCollection(NDVI_Before_AfterJoinedCols.map(function(img) {
+  var image = ee.Image(img);
+  var ImgbandName=image.get('bandName');
+  var needFixMask=image.eq(ee.Image(6));
+//because we need to exclusive the image itself
+//for the begin
+  var ImageListBefore=ee.List(image.get('before'));
+//operate on the before list
+  var beforeCols =ee.Image(ImageListBefore.get(0));
+//for the end
+  var ImageListAfter=ee.List(image.get('after'));
+//operate on the after list
+  var afterCols = ee.Image(ImageListAfter.get(0));
+  
+  // var con=ee.Algorithms.If((beforeCols.eq(afterCols)).and(beforeCols.neq(8)).and(afterCols.neq(8)),
+  // beforeCols.where(beforeCols.eq(1),2),image);
+  var con=(beforeCols.eq(afterCols)).and(beforeCols.neq(ee.Image(6)))
+  .and(beforeCols.mask().eq(ee.Image(1))).unmask();
+  var usedCon=con.eq(ee.Image(1)).multiply(beforeCols.where(beforeCols.eq(ee.Image(1)),ee.Image(2)).unmask())
+  .add(con.neq(ee.Image(1)).multiply(image.unmask()));
+  
+  //begin to interp
+  var interp =needFixMask.not().multiply(image).add(needFixMask.multiply(usedCon)).rename(['B1']);
+  //assgin the time to the processed var
+  return interp.cast({"B1": "int8"}, ["B1"]).rename([ImgbandName])
+  .set('system:time_start', img.get('system:time_start'))
+  .set('bandName',ImgbandName).toUint8();
+}))
+interpolation1=batchRename(interpolation1.toBands());
+
+//********the second 2 step to interpolate////
+// ******************************///////
+var OriginalImage = ee.Image(interpolation1);
+var bandNames=OriginalImage.bandNames();
+// set lag day range to use for scene interpolation (also retrieves images within this 
+// time span on either side of desired composite range)
+var lagRange = 16;
+var NDVICols=ee.ImageCollection(bandNames.map(function(BandNameElement){
+  var stringLength=ee.String(BandNameElement).length();
+  var stryearBegin=ee.String(BandNameElement).slice(-10,-1)
+  var startIndex=ee.String(BandNameElement).rindex(stryearBegin)
+  var DateString=ee.String(BandNameElement).slice(startIndex,startIndex.add(10))
+  var yearStr=ee.Number.parse(DateString.slice(0,4));
+  var monthStr=ee.Number.parse(DateString.slice(5,7));
+  var DayStr=ee.Number.parse(DateString.slice(8,10));
+   
+  return ee.Image(OriginalImage.select([BandNameElement])).rename(['B1']).cast({"B1": "int8"}, ["B1"])
+.set('system:time_start', ee.Date.fromYMD(yearStr.int(), monthStr.int(), DayStr.int()).millis())
+.set('bandName',BandNameElement)
+}))
+// Looks for all images up to 'lagRange' days away from the current image.
+var maxDiffFilter = ee.Filter([
+  ee.Filter.maxDifference({
+    difference: lagRange * 24 * 60 * 60 * 1000,
+    leftField: 'system:time_start',
+    rightField: 'system:time_start'
+  })]);
+// Images after, sorted in descending order (so closest is last).
+//here we cannot remove the equals, otherwise the timeseries will lost last element
+var  FilterAfter= ee.Filter.and(maxDiffFilter, ee.Filter.lessThanOrEquals('system:time_start', null, 'system:time_start'))
+var NDVI_AfterJoinedCols = ee.Join.saveAll('after', 'system:time_start', false).apply(NDVICols, NDVICols, FilterAfter)
+// Images before, sorted in ascending order (so closest is last).
+//here we cannot remove the equals, otherwise the timeseries will lost first element
+var FilterBefore = ee.Filter.and(maxDiffFilter, ee.Filter.greaterThanOrEquals('system:time_start', null, 'system:time_start'))
+var NDVI_Before_AfterJoinedCols = ee.Join.saveAll('before', 'system:time_start', true).apply(NDVI_AfterJoinedCols, NDVICols, FilterBefore)
+
+var interpolation2 = ee.ImageCollection(NDVI_Before_AfterJoinedCols.map(function(img) {
+  var image = ee.Image(img);
+  var ImgbandName=image.get('bandName');
+  var needFixMask=image.eq(ee.Image(6));
+//because we need to exclusive the image itself
+//for the begin
+  var ImageListBefore=ee.List(image.get('before'));
+  var CountBefore=ImageListBefore.length();
+//operate on the before list
+  var beforeCols = ee.Algorithms.If(CountBefore.gte(2),
+  ee.ImageCollection.fromImages(ImageListBefore.slice(0,2)),
+  ee.ImageCollection.fromImages(ImageListBefore.slice(0,CountBefore)));
+//for the end
+  var ImageListAfter=ee.List(image.get('after'));
+  var CountAfter=ImageListAfter.length();
+//operate on the after list
+  var afterCols = ee.Algorithms.If(CountAfter.gte(2),
+  ee.ImageCollection.fromImages(ImageListAfter.slice(0,2)),
+  ee.ImageCollection.fromImages(ImageListAfter.slice(0,CountAfter)));
+//combine the before and after cols  
+  var combinedBeforeAfterCols=ee.ImageCollection(beforeCols).merge(afterCols);
+  // the most common value at each pixel of six 
+  var MostCommonImage= combinedBeforeAfterCols.map(function(image){
+    return image.updateMask(image.neq(6));
+  }).mode()
+  MostCommonImage=MostCommonImage.unmask(6);
+  //begin to interp
+  var interp =needFixMask.not().multiply(image).add(needFixMask.multiply(MostCommonImage)).rename(['B1']);
+  var mask=MostCommonImage.eq(1).and(image.neq(1)).and(needFixMask.eq(1));
+  interp=interp.where(mask.eq(1),2);
+  interp=interp.where(image.eq(2),2);
+  //assgin the time to the processed var
+  return interp.cast({"B1": "int8"}, ["B1"]).rename([ImgbandName])
+  .set('system:time_start', img.get('system:time_start'))
+  .set('bandName',ImgbandName).toUint8();
+}))
+ interpolation2=batchRename(interpolation2.toBands());
+
+
+
+//********the third  3  step to interpolate////
+// ******************************///////
+var OriginalImage = ee.Image(interpolation2);
+var bandNames=OriginalImage.bandNames();
+// set lag day range to use for scene interpolation (also retrieves images within this 
+// time span on either side of desired composite range)
+var lagRange = 24;
+var NDVICols=ee.ImageCollection(bandNames.map(function(BandNameElement){
+  var stringLength=ee.String(BandNameElement).length();
+  var stryearBegin=ee.String(BandNameElement).slice(-10,-1)
+  var startIndex=ee.String(BandNameElement).rindex(stryearBegin)
+  var DateString=ee.String(BandNameElement).slice(startIndex,startIndex.add(10))
+  var yearStr=ee.Number.parse(DateString.slice(0,4));
+  var monthStr=ee.Number.parse(DateString.slice(5,7));
+  var DayStr=ee.Number.parse(DateString.slice(8,10));
+   
+  return ee.Image(OriginalImage.select([BandNameElement])).rename(['B1']).cast({"B1": "int8"}, ["B1"])
+.set('system:time_start', ee.Date.fromYMD(yearStr.int(), monthStr.int(), DayStr.int()).millis())
+.set('bandName',BandNameElement)
+}))
+// Looks for all images up to 'lagRange' days away from the current image.
+var maxDiffFilter = ee.Filter([
+  ee.Filter.maxDifference({
+    difference: lagRange * 24 * 60 * 60 * 1000,
+    leftField: 'system:time_start',
+    rightField: 'system:time_start'
+  })]);
+// Images after, sorted in descending order (so closest is last).
+//here we cannot remove the equals, otherwise the timeseries will lost last element
+var  FilterAfter= ee.Filter.and(maxDiffFilter, ee.Filter.lessThanOrEquals('system:time_start', null, 'system:time_start'))
+var NDVI_AfterJoinedCols = ee.Join.saveAll('after', 'system:time_start', false).apply(NDVICols, NDVICols, FilterAfter)
+// Images before, sorted in ascending order (so closest is last).
+//here we cannot remove the equals, otherwise the timeseries will lost first element
+var FilterBefore = ee.Filter.and(maxDiffFilter, ee.Filter.greaterThanOrEquals('system:time_start', null, 'system:time_start'))
+var NDVI_Before_AfterJoinedCols = ee.Join.saveAll('before', 'system:time_start', true).apply(NDVI_AfterJoinedCols, NDVICols, FilterBefore)
+var interpolation3 = ee.ImageCollection(NDVI_Before_AfterJoinedCols.map(function(img) {
+  var image = ee.Image(img);
+  var ImgbandName=image.get('bandName');
+  var needFixMask=image.eq(ee.Image(6));
+//because we need to exclusive the image itself
+//for the begin
+  var ImageListBefore=ee.List(image.get('before'));
+  var CountBefore=ImageListBefore.length();
+//operate on the before list
+  var beforeCols = ee.Algorithms.If(CountBefore.gte(3),
+  ee.ImageCollection.fromImages(ImageListBefore.slice(0,3)),
+  ee.ImageCollection.fromImages(ImageListBefore.slice(0,CountBefore)));
+//for the end
+  var ImageListAfter=ee.List(image.get('after'));
+  var CountAfter=ImageListAfter.length();
+//operate on the after list
+  var afterCols = ee.Algorithms.If(CountAfter.gte(3),
+  ee.ImageCollection.fromImages(ImageListAfter.slice(0,3)),
+  ee.ImageCollection.fromImages(ImageListAfter.slice(0,CountAfter)));
+//combine the before and after cols  
+  var combinedBeforeAfterCols=ee.ImageCollection(beforeCols).merge(afterCols);
+  // the most common value at each pixel of six 
+  var MostCommonImage= combinedBeforeAfterCols.map(function(image){
+    return image.updateMask(image.neq(6));
+  }).mode();
+  MostCommonImage=MostCommonImage.unmask(6);
+  //begin to interp
+  var interp =needFixMask.not().multiply(image).add(needFixMask.multiply(MostCommonImage)).rename(['B1']);
+  var mask=MostCommonImage.eq(1).and(image.neq(1)).and(needFixMask.eq(1));
+  interp=interp.where(mask.eq(1),2);
+  interp=interp.where(image.eq(2),2);
+  //assgin the time to the processed var
+  return interp.cast({"B1": "int8"}, ["B1"]).rename([ImgbandName])
+  .set('system:time_start', img.get('system:time_start'))
+  .set('bandName',ImgbandName).toUint8();
+}))
+interpolation3=batchRename(interpolation3.toBands());
+return interpolation3.reproject('EPSG:4326',null,250);
+})
+print('interpolation3',interpolation3);
+
+var image = ee.Image('MODIS/006/MOD09Q1/2017_06_18').updateMask(land.eq(1)).clip(grid);
+Map.addLayer(image, visParams, 'MOD09Q1noisefree');  
+
+var indexList = waterImageCol.reduceColumns(ee.Reducer.toList(), ["system:index"])
+                             .get("list");
+indexList.evaluate(function(indexs) {
+  // every grid
+  for (var i = 0; i < indexs.length; i++) {
+      var waterStacking = ee.Image(waterImageCol.filter(ee.Filter.eq("system:index", indexs[i]))
+                                                .first());
+      var interStacking=ee.Image(interpolation3.filter(ee.Filter.eq("system:index", indexs[i]))
+                                                .first());
+                                                
+ var vis = {min:1,max:6,
+////////////////////1-water,2-interWater,3-ice&snow,4-land,5-mountain shadow,6-cloud
+  palette: ['blue', 'blue', '#19ffff','green', 'black','white']
+};
+    //  Map.addLayer(waterStacking.select(796),vis,'before2017-6-18');
+    //  Map.addLayer(interStacking.select(794),vis,'after2017-6-18'); 
+      //Test Result
+      var label = waterStacking.get("label");
+      var index= waterStacking.get('system:index');
+      var cell = grid.filter(ee.Filter.eq("label", label)).geometry();
+      
+      Export.image.toDrive({
+          image:interStacking,
+description: ee.String(ee.Number(lon_start)).cat(ee.String('_')).cat(ee.String(ee.Number(lon_end)))
+          .cat(ee.String('_')).cat(ee.String(ee.Number(lat_start))).cat(ee.String('_')).cat(ee.String(ee.Number(lat_end)))
+      .cat(ee.String('_')).cat(ee.String('grid')).cat(ee.String(index)).cat(ee.String('_')).cat(ee.String('5'))
+      .cat(ee.String('_')).cat(ee.String('5')).cat(ee.String('_2000-2020')).getInfo(),
+          scale: 250,
+          region: cell,
+          crs:"EPSG:4326",
+          fileFormat: 'GeoTIFF',
+          folder: 'Europe2020_4326',
+          maxPixels: 1e11
+      });
+      Export.image.toAsset({
+          image: interStacking,
+          description: ee.String(ee.Number(lon_start)).cat(ee.String('_')).cat(ee.String(ee.Number(lon_end)))
+          .cat(ee.String('_')).cat(ee.String(ee.Number(lat_start))).cat(ee.String('_')).cat(ee.String(ee.Number(lat_end)))
+       .cat(ee.String('_')).cat(ee.String('grid')).cat(ee.String(index)).cat(ee.String('_')).cat(ee.String('5'))
+       .cat(ee.String('_')).cat(ee.String('5')).cat(ee.String('_2000-2020_Asset')).getInfo(),
+          scale: 250,
+          region: cell,
+          crs:"EPSG:4326",
+          assetId:ee.String('Europe2020_4326/').cat(ee.String(ee.Number(lon_start)).cat(ee.String('_')).cat(ee.String(ee.Number(lon_end)))
+          .cat(ee.String('_')).cat(ee.String(ee.Number(lat_start))).cat(ee.String('_')).cat(ee.String(ee.Number(lat_end)))
+       .cat(ee.String('_')).cat(ee.String('grid')).cat(ee.String(index)).cat(ee.String('_')).cat(ee.String('5'))
+       .cat(ee.String('_')).cat(ee.String('5')).cat(ee.String('_2000-2020_Asset'))).getInfo(),
+       // pyramidingPolicy:{'.default': 'sample'},
+          maxPixels: 1e11
+      });
+  }
+});

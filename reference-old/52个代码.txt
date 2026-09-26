@@ -1,0 +1,67 @@
+Asia241
+3.	Asia2
+https://code.earthengine.google.com/398eee0aed53322a259516726f6fd32f
+4.	Asia3
+https://code.earthengine.google.com/511894376931ada0a7bdd9c8ca78e4d2
+5.	Asia3000
+https://code.earthengine.google.com/6928da587716fa35c5ceb84c6d174784
+6.	Asia4
+https://code.earthengine.google.com/10f36fe2a776550a15794a504134ab13
+7.	Asia4000
+https://code.earthengine.google.com/1ee2e18a07d2e703e8cf5a9d91bb8f20
+8.	Asia5
+https://code.earthengine.google.com/eea11a380ec9617da669c26b8451578a
+9.	Asia5000
+https://code.earthengine.google.com/87a2b7fd9f911cd29b763fac9742191f
+10.	Asia6
+https://code.earthengine.google.com/801c633951a1236cc22ad5c4519a9669
+11.	Asia6000
+https://code.earthengine.google.com/ab81804a48f7b1ddff9290f5819df24b
+12.	Asia7
+https://code.earthengine.google.com/82aa544b1c9ee7699184804570a8df2a
+13.	Asia8
+https://code.earthengine.google.com/5d397f14af76d07265aa0d0ffd3295dd
+14.	Asia9
+https://code.earthengine.google.com/b6478985902cdffddf115ee11d971f30
+Africa125
+1.	Africa1: https://code.earthengine.google.com/bcaa3a5ab6169b3b8f45f42dc2f7bb7d
+2.	Africa2: https://code.earthengine.google.com/5eaa398dde7d4d22df7ea158d9a15da3
+3.	Africa3: https://code.earthengine.google.com/5fecadda526980867fd8c54f05b60faa
+4.	Africa3000: https://code.earthengine.google.com/2cc40091513005b9f252a92185901afe
+5.	Africa4: https://code.earthengine.google.com/de2f954a5fe63791a8549ac58a1ccc25
+6.	Africa4000: https://code.earthengine.google.com/e92c7730370726165eb9edfc3a333b68
+7.	Africa5: https://code.earthengine.google.com/588150f836b9418b2bbabdecb7865862
+8.	Africa5000: https://code.earthengine.google.com/26507f9ff97e126a375a044fdb21d493
+9.	Africa6: https://code.earthengine.google.com/6f9e19aab537126d527889b5740135d6
+10.	Africa7: https://code.earthengine.google.com/5b66571c4e1d9f02b67dd8df0b606c0b
+America273
+1.	America1: 
+https://code.earthengine.google.com/3f90515a2c657fd40b8afb180630b58c
+2.	America1000: https://code.earthengine.google.com/6726dfde69e58600ccb768bf4ce57f20
+3.	America2: https://code.earthengine.google.com/8031216ae742418a1d6adce4cccfbaf4
+4.	America2000: https://code.earthengine.google.com/34462abc37fd7c7e303965585f659db8
+5.	America3: https://code.earthengine.google.com/40facb31e5a7e6b117131f265f7fc293
+6.	America3000: https://code.earthengine.google.com/39f1724c3108e3199617f967f2e1cbb9
+7.	America4: https://code.earthengine.google.com/a11c853e38b6a97d4d3131a070e649a8
+8.	America5: https://code.earthengine.google.com/454b018d7a73fd2f12b534bac1034a05
+9.	America6: https://code.earthengine.google.com/306f87f64413109e1f8f9631c24a467a
+10.	America6000: https://code.earthengine.google.com/36783f4b9e999d7f8a090b236b80161e
+11.	America7: https://code.earthengine.google.com/b549f24b842ceb5a8d117ed41685c3ff
+12.	America8: https://code.earthengine.google.com/aac2018d0b0503156c756d81264f8d7e
+13.	America8000: https://code.earthengine.google.com/78a2545076383efa20341f069b8a1717
+14.	America9: https://code.earthengine.google.com/488ff2ca2b665403909d02263cde0090
+15.	America10: https://code.earthengine.google.com/353fad7df30a1de982c8aa60c7c1c54e
+Europe83
+1.	Europe1: https://code.earthengine.google.com/bd1b3b6936c0530616e568d56408b7f3
+2.	Europe1000: https://code.earthengine.google.com/54bf31bbd917d7cfa7416e2534983e43
+3.	Europe2: https://code.earthengine.google.com/498484d0fa45c01c04a968466f2e69ca
+4.	Europe2000: https://code.earthengine.google.com/9c3738fd17f88fb12234e7a01e6f338c
+5.	Europe3: https://code.earthengine.google.com/29329411014cb228abaeef01f5e915aa
+6.	Europe3000: https://code.earthengine.google.com/78d9bbecad9f88558886f1b760bc60c7
+7.	Europe4: https://code.earthengine.google.com/ee347217a23a14a12b5c95afdbbd77b4
+8.	Europe4000: https://code.earthengine.google.com/2a2ac9c9096accf1c7bfa36025382a5f
+Oceania85
+1.	Oceania1: https://code.earthengine.google.com/bca7c057bb66dd88b27bbb284390f413
+2.	Oceania2: https://code.earthengine.google.com/8d131cb18a65816441794983891f5750
+3.	Oceania3: https://code.earthengine.google.com/0391c614316f98070a7f05ac9b0b571b
+4.	Oceania4: https://code.earthengine.google.com/8c90ab76d06e5c5825f0f009c8909fd1
